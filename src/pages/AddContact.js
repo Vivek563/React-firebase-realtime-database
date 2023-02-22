@@ -20,7 +20,8 @@ import {
 import { readAndCompressImage } from "browser-image-resizer";
 
 // configs for image resizing
-//TODO: add image configurations
+
+import {imageConfig} from "../utils/config";
 
 import { MdAddCircleOutline } from "react-icons/md";
 
@@ -72,7 +73,57 @@ const AddContact = () => {
 
   // To upload image to firebase and then set the the image link in the state of the app
   const imagePicker = async e => {
-    // TODO: upload image and set D-URL to state
+  try {
+    const file = e.target.files[0]
+     
+    var metadata = {
+      contentType: file.type 
+    }
+    let resizedImage = await readAndCompressImage(file, imageConfig)
+    const storageRef = await firebase.storage().ref()
+
+    var uploadTask = storageRef
+    .child('image/' + file.name)
+    .put(resizedImage, metadata)
+
+
+    uploadTask.on(
+      firebase.storage.TaskEvent.STATE_CHANGED,
+      snapshot => {
+        setIsUploading(true)
+        var progress = (snapshot.bytesTranferred/snapshot.totalBytes) *100
+
+        switch (snapshot.state) {
+          case firebase.storage.TaskState.PAUSED:
+            console.log("uploading is paused");
+            break;
+            case firebase.storage.TaskState.RUNNING:
+              console.log("uploading is in progress...");
+              break;
+        }
+        if(progress == 100){
+          setIsUploading(false)
+          toast("uploaded", {type: "success"})
+        }
+      },
+      error =>{
+        toast('something is wrong in state change', {type:"error"})
+      },
+      () => {
+        uploadTast.shapshot.ref.getDownloadURL()
+        .then( downloadURL => {
+          setDownloadUrl(downloadURL)
+        })
+        .catch(err => console.log(err))
+      }
+    )
+
+
+
+  } catch (error) {
+    console.error(error)
+    toast('Something went wrong', {type: "error"})
+  } 
   };
 
   // setting contact to firebase DB
