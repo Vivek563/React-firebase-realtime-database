@@ -20,8 +20,8 @@ import {
 import { readAndCompressImage } from "browser-image-resizer";
 
 // configs for image resizing
-
-import {imageConfig} from "../utils/config";
+//TODO: DONE add image configurations
+import { imageConfig } from "../utils/config";
 
 import { MdAddCircleOutline } from "react-icons/md";
 
@@ -73,73 +73,108 @@ const AddContact = () => {
 
   // To upload image to firebase and then set the the image link in the state of the app
   const imagePicker = async e => {
-  try {
-    const file = e.target.files[0]
-     
-    var metadata = {
-      contentType: file.type 
-    }
-    let resizedImage = await readAndCompressImage(file, imageConfig)
-    const storageRef = await firebase.storage().ref()
+    // TODO: upload image and set D-URL to state
 
-    var uploadTask = storageRef
-    .child('image/' + file.name)
-    .put(resizedImage, metadata)
+    try {
+      const file = e.target.files[0];
 
+      var metadata = {
+        contentType: file.type
+      };
 
-    uploadTask.on(
-      firebase.storage.TaskEvent.STATE_CHANGED,
-      snapshot => {
-        setIsUploading(true)
-        var progress = (snapshot.bytesTranferred/snapshot.totalBytes) *100
+      let resizedImage = await readAndCompressImage(file, imageConfig);
 
-        switch (snapshot.state) {
-          case firebase.storage.TaskState.PAUSED:
-            console.log("uploading is paused");
-            break;
-            case firebase.storage.TaskState.RUNNING:
-              console.log("uploading is in progress...");
+      const storageRef = await firebase.storage().ref();
+      var uploadTask = storageRef
+        .child("images/" + file.name)
+        .put(resizedImage, metadata);
+
+      uploadTask.on(
+        firebase.storage.TaskEvent.STATE_CHANGED,
+        snapshot => {
+          setIsUploading(true);
+          var progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+
+          switch (snapshot.state) {
+            case firebase.storage.TaskState.PAUSED:
+              setIsUploading(false);
+              console.log("UPloading is paused");
               break;
+            case firebase.storage.TaskState.RUNNING:
+              console.log("UPloading is in progress...");
+              break;
+          }
+          if (progress == 100) {
+            setIsUploading(false);
+            toast("uploaded", { type: "success" });
+          }
+        },
+        error => {
+          toast("something is wrong in state change", { type: "error" });
+        },
+        () => {
+          uploadTask.snapshot.ref
+            .getDownloadURL()
+            .then(downloadURL => {
+              setDownloadUrl(downloadURL);
+            })
+            .catch(err => console.log(err));
         }
-        if(progress == 100){
-          setIsUploading(false)
-          toast("uploaded", {type: "success"})
-        }
-      },
-      error =>{
-        toast('something is wrong in state change', {type:"error"})
-      },
-      () => {
-        uploadTast.shapshot.ref.getDownloadURL()
-        .then( downloadURL => {
-          setDownloadUrl(downloadURL)
-        })
-        .catch(err => console.log(err))
-      }
-    )
-
-
-
-  } catch (error) {
-    console.error(error)
-    toast('Something went wrong', {type: "error"})
-  } 
+      );
+    } catch (error) {
+      console.error(error);
+      toast("Something went wrong", { type: "error" });
+    }
   };
 
   // setting contact to firebase DB
   const addContact = async () => {
     //TODO: add contact method
+    try {
+      firebase
+        .database()
+        .ref("contacts/" + v4())
+        .set({
+          name,
+          email,
+          phoneNumber,
+          address,
+          picture: downloadUrl,
+          star
+        });
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   // to handle update the contact when there is contact in state and the user had came from clicking the contact update icon
   const updateContact = async () => {
     //TODO: update contact method
+    try {
+      firebase
+        .database()
+        .ref("contacts/" + contactToUpdateKey)
+        .set({
+          name,
+          email,
+          phoneNumber,
+          address,
+          picture: downloadUrl,
+          star
+        });
+    } catch (error) {
+      console.log(error);
+      toast("Oppss..", { type: "error" });
+    }
   };
 
   // firing when the user click on submit button or the form has been submitted
   const handleSubmit = e => {
     e.preventDefault();
+    isUpdate ? updateContact() : addContact();
 
+    toast("Success", { type: "success" });
     // isUpdate wll be true when the user came to update the contact
     // when their is contact then updating and when no contact to update then adding contact
     //TODO: set isUpdate value

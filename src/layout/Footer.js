@@ -1,4 +1,4 @@
-
+//TODO: DONE Export the Footer
 import React from "react";
 
 const Footer = () => {
